@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CryptoPulse — Live Crypto Converter</title>
+<meta name="description" content="Real-time cryptocurrency to fiat converter with live market overview and 7-day price history charts." />
+<style>
+  :root{
+    --bg:#f4f4f6; --card:#ffffff; --ink:#0f1222; --muted:#7b8194;
+    --line:#e9eaf0; --brand:#4f46e5; --brand-soft:#eef0ff;
+    --up:#059669; --up-soft:#e9f9f2; --down:#e11d48; --down-soft:#fdeef2;
+    --radius:18px; --shadow:0 8px 30px rgba(15,18,34,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header{background:var(--card);border-bottom:1px solid var(--line);}
+  .bar{max-width:1280px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .logo{width:38px;height:38px;border-radius:12px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:800}
+  .meta{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px}
+  button.refresh{background:var(--brand-soft);color:var(--brand);border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer;font-size:14px}
+  button.refresh:hover{filter:brightness(.97)}
+  main{max-width:1280px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:24px;align-items:start}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;margin-bottom:24px}
+  .card h2{margin:0;font-size:24px;letter-spacing:-.02em}
+  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .tag{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .conv{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:end;margin-top:26px}
+  .field label{display:block;margin-bottom:8px}
+  .box{display:flex;align-items:center;background:#fafbff;border:1px solid var(--line);border-radius:14px;padding:0 14px;height:60px}
+  .box input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:20px;font-weight:700;color:var(--ink);width:100%}
+  .box.out input{color:var(--brand)}
+  .box select{border:0;background:transparent;outline:none;font-size:15px;font-weight:700;cursor:pointer;color:var(--ink)}
+  .swap{width:52px;height:52px;border-radius:50%;background:var(--brand);color:#fff;border:0;font-size:20px;cursor:pointer;margin-bottom:4px}
+  .swap:hover{filter:brightness(1.08)}
+  .stats{display:flex;gap:56px;border-top:1px solid var(--line);margin-top:28px;padding-top:20px}
+  .stats strong{display:block;margin-top:6px;font-size:19px}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .pill{font-size:12px;font-weight:700;padding:5px 9px;border-radius:8px}
+  .pill.up{background:var(--up-soft)} .pill.down{background:var(--down-soft)}
+  .sub{color:var(--muted);font-size:14px;margin-top:4px}
+  #chart{width:100%;height:300px;display:block;margin-top:18px}
+  .badge{background:#f1f2f7;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted)}
+  .list{margin-top:8px;max-height:78vh;overflow:auto}
+  .coin{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;cursor:pointer}
+  .coin:hover{background:#f7f8fc}
+  .coin.active{background:var(--brand-soft)}
+  .coin img{width:34px;height:34px;border-radius:50%}
+  .coin .nm{flex:1;min-width:0}
+  .coin .nm b{font-size:14.5px}
+  .coin .nm span{color:var(--muted);font-size:11px;text-transform:uppercase;margin-left:5px}
+  .coin .px{color:var(--muted);font-size:13px}
+  .skeleton{height:58px;border-radius:14px;background:linear-gradient(90deg,#f1f2f7,#e7e9f2,#f1f2f7);background-size:200% 100%;animation:sh 1.2s infinite;margin:8px 0}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @media(max-width:960px){main{grid-template-columns:1fr}.conv{grid-template-columns:1fr}.swap{margin:0 auto}.stats{gap:32px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><div class="logo">◎</div> CryptoPulse</div>
+    <div class="meta">
+      <span id="updated">Loading…</span>
+      <button class="refresh" id="refresh">Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <div class="row-between">
+        <h2>Converter</h2><span class="tag">Real-time rates</span>
+      </div>
+      <div class="conv">
+        <div class="field">
+          <label class="tag">From crypto</label>
+          <div class="box">
+            <input id="amount" type="number" min="0" step="any" value="1" />
+            <select id="coin"></select>
+          </div>
+        </div>
+        <button class="swap" id="swap" title="Swap direction">⇄</button>
+        <div class="field">
+          <label class="tag" id="toLabel">To fiat</label>
+          <div class="box out">
+            <input id="result" readonly value="—" />
+            <select id="fiat">
+              <option>USD</option><option>EUR</option><option>GBP</option>
+              <option>JPY</option><option>AUD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="stats">
+        <div><span class="tag">Current rate</span><strong id="rate">—</strong></div>
+        <div><span class="tag">24h change</span><strong id="chg">—</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row-between">
+        <div><h2 id="chartTitle">Price History</h2><div class="sub">Last 7 days performance</div></div>
+        <span class="badge">7D</span>
+      </div>
+      <canvas id="chart"></canvas>
+    </div>
+  </section>
+
+  <aside class="card">
+    <div class="row-between"><h2>Market Overview</h2><span>📈</span></div>
+    <div class="list" id="list">
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var API = "https://api.coingecko.com/api/v3";
+  var SYMBOLS = {USD:"$",EUR:"€",GBP:"£",JPY:"¥",AUD:"A$"};
+  var coins = [], selected = null, history = [], inverted = false;
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function fmtMoney(v, cur){
+    var s = SYMBOLS[cur] || "";
+    var d = v >= 1000 ? 0 : v >= 1 ? 2 : 6;
+    return s + v.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:d});
+  }
+
+  function renderList(){
+    var el = $("list"); el.innerHTML = "";
+    coins.forEach(function(c){
+      var cur = $("fiat").value;
+      var up = c.change >= 0;
+      var d = document.createElement("div");
+      d.className = "coin" + (selected && c.id === selected.id ? " active" : "");
+      d.innerHTML =
+        '<img alt="' + c.name + '" src="' + c.image + '" />' +
+        '<div class="nm"><b>' + c.name + '</b><span>' + c.symbol + '</span>' +
+        '<div class="px">' + fmtMoney(c.price, cur) + '</div></div>' +
+        '<span class="pill ' + (up ? "up" : "down") + '">' +
+        (up ? "+" : "") + c.change.toFixed(2) + '%</span>';
+      d.onclick = function(){ selected = c; $("coin").value = c.id; onCoinChange(); };
+      el.appendChild(d);
+    });
+  }
+
+  function convert(){
+    if(!selected) return;
+    var amt = parseFloat($("amount").value);
+    if(isNaN(amt)) { $("result").value = ""; return; }
+    var cur = $("fiat").value;
+    var out = inverted ? amt / selected.price : amt * selected.price;
+    $("result").value = out.toLocaleString(undefined,{maximumFractionDigits: out < 1 ? 8 : 2});
+    $("rate").textContent = "1 " + selected.symbol.toUpperCase() + " = " + fmtMoney(selected.price, cur);
+    var up = selected.change >= 0;
+    var chg = $("chg");
+    chg.textContent = (up ? "▲ +" : "▼ ") + selected.change.toFixed(2) + "%";
+    chg.className = up ? "up" : "down";
+    $("chartTitle").textContent = selected.name + " Price History";
+  }
+
+  function drawChart(){
+    var cv = $("chart"), ctx = cv.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = 300;
+    cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    if(history.length < 2) return;
+    var pad = 12;
+    var min = Math.min.apply(null, history), max = Math.max.apply(null, history);
+    var range = (max - min) || 1;
+    var x = function(i){ return pad + i * (w - pad*2) / (history.length - 1); };
+    var y = function(v){ return pad + (1 - (v - min)/range) * (h - pad*2); };
+
+    ctx.strokeStyle = "#eceef6"; ctx.lineWidth = 1;
+    for(var g=0; g<=4; g++){
+      var gy = pad + g*(h-pad*2)/4;
+      ctx.beginPath(); ctx.moveTo(pad,gy); ctx.lineTo(w-pad,gy); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(x(0), y(history[0]));
+    for(var i=1;i<history.length;i++) ctx.lineTo(x(i), y(history[i]));
+    var grad = ctx.createLinearGradient(0,pad,0,h);
+    grad.addColorStop(0,"rgba(79,70,229,.28)"); grad.addColorStop(1,"rgba(79,70,229,0)");
+    ctx.lineTo(x(history.length-1), h-pad); ctx.lineTo(x(0), h-pad); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x(0), y(history[0]));
+    for(var j=1;j<history.length;j++) ctx.lineTo(x(j), y(history[j]));
+    ctx.strokeStyle = "#4f46e5"; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.stroke();
+  }
+
+  function loadHistory(){
+    if(!selected) return;
+    history = [];
+    drawChart();
+    fetch(API + "/coins/" + selected.id + "/market_chart?vs_currency=" +
+          $("fiat").value.toLowerCase() + "&days=7")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        history = (d.prices || []).map(function(p){ return p[1]; });
+        drawChart();
+      })
+      .catch(function(){});
+  }
+
+  function onCoinChange(){
+    var id = $("coin").value;
+    selected = coins.filter(function(c){ return c.id === id; })[0] || coins[0];
+    convert(); renderList(); loadHistory();
+  }
+
+  function load(){
+    $("updated").textContent = "Refreshing…";
+    fetch(API + "/coins/markets?vs_currency=" + $("fiat").value.toLowerCase() +
+          "&order=market_cap_desc&per_page=20&page=1")
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        coins = data.map(function(c){
+          return { id:c.id, name:c.name, symbol:c.symbol, image:c.image,
+                   price:c.current_price, change:c.price_change_percentage_24h || 0 };
+        });
+        var sel = $("coin"), keep = sel.value;
+        sel.innerHTML = coins.map(function(c){
+          return '<option value="' + c.id + '">' + c.symbol.toUpperCase() + '</option>';
+        }).join("");
+        sel.value = coins.some(function(c){ return c.id === keep; }) ? keep : coins[0].id;
+        selected = coins.filter(function(c){ return c.id === sel.value; })[0];
+        $("updated").textContent = "Last updated: " + new Date().toLocaleTimeString();
+        convert(); renderList(); loadHistory();
+      })
+      .catch(function(){
+        $("updated").textContent = "Could not load live rates";
+        $("list").innerHTML = '<div class="sub">Market data unavailable. Try refreshing.</div>';
+      });
+  }
+
+  $("amount").addEventListener("input", convert);
+  $("coin").addEventListener("change", onCoinChange);
+  $("fiat").addEventListener("change", load);
+  $("refresh").addEventListener("click", load);
+  $("swap").addEventListener("click", function(){
+    inverted = !inverted;
+    $("toLabel").textContent = inverted ? "To crypto" : "To fiat";
+    convert();
+  });
+  window.addEventListener("resize", drawChart);
+
+  load();
+  setInterval(load, 60000);
+})();
+</script>
+</body>
+</html>
